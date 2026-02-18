@@ -1,16 +1,40 @@
 import { useState } from "react";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "../firebase";
 import { useNavigate, Link } from "react-router-dom";
 
 export default function Register() {
+  const [username, setUsername] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState("customer");
+
   const navigate = useNavigate();
 
   const register = async () => {
+    if (!username || !phone || !email || !password) {
+      alert("All fields required");
+      return;
+    }
+
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
+      // 1. Create auth user
+      const res = await createUserWithEmailAndPassword(auth, email, password);
+      const user = res.user;
+
+      // 2. Save profile in Firestore
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        username: username,
+        phone: phone,
+        email: user.email,
+        role: role,
+        status: "active",
+        createdAt: serverTimestamp(),
+      });
+
       navigate("/dashboard");
     } catch (err) {
       alert(err.message);
@@ -24,6 +48,18 @@ export default function Register() {
 
         <input
           className="w-full border p-2 mb-3"
+          placeholder="Username"
+          onChange={(e) => setUsername(e.target.value)}
+        />
+
+        <input
+          className="w-full border p-2 mb-3"
+          placeholder="Phone Number"
+          onChange={(e) => setPhone(e.target.value)}
+        />
+
+        <input
+          className="w-full border p-2 mb-3"
           placeholder="Email"
           onChange={(e) => setEmail(e.target.value)}
         />
@@ -34,6 +70,15 @@ export default function Register() {
           placeholder="Password"
           onChange={(e) => setPassword(e.target.value)}
         />
+
+        <select
+          className="w-full border p-2 mb-3"
+          onChange={(e) => setRole(e.target.value)}
+        >
+          <option value="customer">Customer</option>
+          <option value="manager">Manager</option>
+          <option value="admin">Admin</option>
+        </select>
 
         <button
           onClick={register}
