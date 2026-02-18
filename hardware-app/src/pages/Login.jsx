@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../auth";
+import { doc, getDoc } from "firebase/firestore";
+import { auth, db } from "../firebase";
 import { useNavigate, Link } from "react-router-dom";
 
 export default function Login() {
@@ -10,8 +11,27 @@ export default function Login() {
 
   const login = async () => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-      navigate("/dashboard");
+      const res = await signInWithEmailAndPassword(auth, email, password);
+      const user = res.user;
+
+      const snap = await getDoc(doc(db, "users", user.uid));
+      const userData = snap.data();
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          username: userData.username,
+          phone: userData.phone,
+          role: userData.role,
+        }),
+      );
+
+      // 🔥 Role-based redirect
+      if (userData.role === "admin") navigate("/admin");
+      else if (userData.role === "manager") navigate("/manager");
+      else navigate("/");
     } catch (err) {
       alert(err.message);
     }
